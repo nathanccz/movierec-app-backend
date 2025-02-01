@@ -2,6 +2,7 @@ const User = require('../models/User')
 const Movie = require('../models/Movie')
 const Review = require('../models/Review')
 const Fave = require('../models/Fave')
+const Watchlist = require('../models/Watchlist')
 const Recommendation = require('../models/Recommendation')
 
 module.exports = {
@@ -167,5 +168,45 @@ module.exports = {
       } catch (error) {
         return res.status(500).json({ message: 'Server Error' });
       }
+    },
+
+    addToWatchlist: async (req, res) => {
+      try {
+        const movieFromDB = await Movie.findOne({tmdbId: req.params.id}).lean()
+        
+        if (!movieFromDB) {
+          return res.status(404).json({ message: "Movie not found" });
+        }
+
+        const { _id: mongoId, mediaType, title, poster } = movieFromDB;
+
+        await Watchlist.create({ userId: req.user.id, title: title, itemId: mongoId, type: mediaType, poster: poster})
+
+        return res.status(201).json({ "message": "Added to watchlist" })
+      } catch (error) {
+        console.error(error)
+        return res.status(500).json({ message: 'Server Error' }); 
+      }
+  },
+
+  getWatchlist: async (req, res) => {
+    try {
+      const watchlist = await Watchlist.find({userId: req.user.id})
+      
+      if (watchlist.length === 0) {
+          return res.json({watchlist: []})
+      } 
+
+      const watchlistData = watchlist.map(movie => ({
+          tmdbId: movie.tmdbId,
+          title: movie.title,
+          poster: movie.poster
+      }))
+
+      return res.json({watchlist: watchlistData})
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ message: 'Server Error' });
     }
+  }, 
 }
