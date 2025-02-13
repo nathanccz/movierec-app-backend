@@ -223,4 +223,16 @@ module.exports = {
       return res.status(500).json({ message: 'Server Error' });
     }
   }, 
+  removeFromWatchlist: async (req, res) => {
+    try {
+      const user = req.user.id
+      const mediaId = req.params.id
+      await Watchlist.findOneAndDelete({userId: user, tmdbId: mediaId })
+
+      return res.status(201).json({ "message": "Removed from watchlist" })
+    } catch (error) {
+      console.error(error)
+      return res.status(500).json({ message: 'Server Error' }); 
+    }
+  },
 }
