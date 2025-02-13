@@ -62,6 +62,7 @@ module.exports = {
 
         const favesData = favedMovies.map(movie => ({
             tmdbId: movie.tmdbId,
+            mediaType: movie.mediaType,
             title: movie.title,
             poster: movie.poster
         }))
@@ -82,9 +83,9 @@ module.exports = {
             return res.status(404).json({ message: "Movie not found" });
           }
 
-          const { _id: mongoId, mediaType, title, poster } = movieFromDB;
+          const { _id: mongoId, mediaType, title, poster, tmdbId } = movieFromDB;
 
-          await Fave.create({ userId: req.user.id, title: title, itemId: mongoId, type: mediaType, poster: poster})
+          await Fave.create({ userId: req.user.id, title: title, itemId: mongoId, mediaType: mediaType, poster: poster, tmdbId: tmdbId})
 
           return res.status(201).json({ "message": "Added to faves" })
         } catch (error) {
@@ -93,7 +94,19 @@ module.exports = {
         }
     },
   
- 
+    removeFave: async (req, res) => {
+      try {
+        const user = req.user.id
+        const mediaId = req.params.id
+        await Fave.findOneAndDelete({userId: user, tmdbId: mediaId })
+
+        return res.status(201).json({ "message": "Removed from faves" })
+      } catch (error) {
+        console.error(error)
+        return res.status(500).json({ message: 'Server Error' }); 
+      }
+    },
+  
     getReviews: async (req, res) => {
       try {
         const reviewedMovies = await Review.find({userId: req.user.id})
@@ -178,9 +191,9 @@ module.exports = {
           return res.status(404).json({ message: "Movie not found" });
         }
 
-        const { _id: mongoId, mediaType, title, poster } = movieFromDB;
+        const { _id: mongoId, mediaType, title, poster, tmdbId } = movieFromDB;
 
-        await Watchlist.create({ userId: req.user.id, title: title, itemId: mongoId, type: mediaType, poster: poster})
+        await Watchlist.create({ userId: req.user.id, title: title, itemId: mongoId, mediaType: mediaType, poster: poster, tmdbId: tmdbId})
 
         return res.status(201).json({ "message": "Added to watchlist" })
       } catch (error) {
@@ -200,7 +213,8 @@ module.exports = {
       const watchlistData = watchlist.map(movie => ({
           tmdbId: movie.tmdbId,
           title: movie.title,
-          poster: movie.poster
+          poster: movie.poster,
+          mediaType: movie.mediaType
       }))
 
       return res.json({watchlist: watchlistData})

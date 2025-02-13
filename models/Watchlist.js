@@ -17,10 +17,14 @@ const WatchlistSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         required: true
     },
-    type: {
+    mediaType: {
         type: String,
         enum: ['movie', 'tv'],
-        requires: true
+        required: true
+    },
+    tmdbId: {
+        type: String,
+        required: true
     }
 })
 
