@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const moviesController = require('../controllers/movies') 
+const moviesController = require('../controllers/movies')
 const { ensureAuth, ensureGuest } = require('../middleware/auth')
 
 router.get('/:id', moviesController.getMovie)
@@ -16,5 +16,6 @@ router.get('/reviews/all', moviesController.getReviews)
 router.post('/:id/review', moviesController.postReview)
 router.put('/:id/review/edit', moviesController.editReview)
 router.delete('/:id/delete', moviesController.deleteReview)
+router.post('/openai', moviesController.getOpenAIRecommendations)
 
 module.exports = router

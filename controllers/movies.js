@@ -4,235 +4,301 @@ const Review = require('../models/Review')
 const Fave = require('../models/Fave')
 const Watchlist = require('../models/Watchlist')
 const Recommendation = require('../models/Recommendation')
+const fetch = require('node-fetch')
 
 module.exports = {
-    
-    getMovie: async (req, res) => {
-        const movieId = req.params.id
+  getMovie: async (req, res) => {
+    const movieId = req.params.id
 
-        try {
-          const movie = await Movie.find({movieId: movieId}).lean()
-          
-          if (Object.keys(movie).length === 0) {
-              return res.json({movie: {}})
-          } 
+    try {
+      const movie = await Movie.find({ movieId: movieId }).lean()
 
-          return res.json({movie: movie})
-        } catch (error) {
-          console.log(error)
-          return res.status(500).json({ message: 'Server Error' });
-        }
-      },
-    
-    addMovie: async (req, res) => {
-        const movie = req.body
-        
-        try {
-            await Movie.create({ 
-              tmdbId: movie.tmdbId,
-              director: movie.director,
-              cast: movie.cast,
-              title: movie.title,
-              release_date: movie.release_date,
-              overview: movie.overview,
-              poster: movie.poster,
-              mediaType: movie.mediaType,
-              trailer: movie.trailer,
-              sources: movie.sources,
-              genres: movie.genres,
-              production_companies: movie.production_companies,
-              status: movie.status,
-              popularity: movie.popularity,
-              tagline: movie.tagline  
-            })
-            return res.status(201).json({ "message": "Movie successfully added" })
-        } catch (error) {
-            console.log(error)
-            return res.status(500).json({ message: 'Server Error' });
-        }
-    },
-    
-    getFaves: async (req, res) => {
-      try {
-        const favedMovies = await Fave.find({userId: req.user.id})
-        
-        if (favedMovies.length === 0) {
-            return res.json({faves: []})
-        } 
-
-        const favesData = favedMovies.map(movie => ({
-            tmdbId: movie.tmdbId,
-            mediaType: movie.mediaType,
-            title: movie.title,
-            poster: movie.poster
-        }))
-
-        return res.json({faves: favesData})
-      } catch (error) {
-        console.log(error)
-        return res.status(500).json({ message: 'Server Error' });
+      if (Object.keys(movie).length === 0) {
+        return res.json({ movie: {} })
       }
-    },
-  
-    
-    faveMovie: async (req, res) => {
-        try {
-          const movieFromDB = await Movie.findOne({tmdbId: req.params.id}).lean()
-          
-          if (!movieFromDB) {
-            return res.status(404).json({ message: "Movie not found" });
-          }
 
-          const { _id: mongoId, mediaType, title, poster, tmdbId } = movieFromDB;
+      return res.json({ movie: movie })
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
 
-          await Fave.create({ userId: req.user.id, title: title, itemId: mongoId, mediaType: mediaType, poster: poster, tmdbId: tmdbId})
+  addMovie: async (req, res) => {
+    const movie = req.body
 
-          return res.status(201).json({ "message": "Added to faves" })
-        } catch (error) {
-          console.error(error)
-          return res.status(500).json({ message: 'Server Error' }); 
-        }
-    },
-  
-    removeFave: async (req, res) => {
-      try {
-        const user = req.user.id
-        const mediaId = req.params.id
-        await Fave.findOneAndDelete({userId: user, tmdbId: mediaId })
+    try {
+      await Movie.create({
+        tmdbId: movie.tmdbId,
+        director: movie.director,
+        cast: movie.cast,
+        title: movie.title,
+        release_date: movie.release_date,
+        overview: movie.overview,
+        poster: movie.poster,
+        mediaType: movie.mediaType,
+        trailer: movie.trailer,
+        sources: movie.sources,
+        genres: movie.genres,
+        production_companies: movie.production_companies,
+        status: movie.status,
+        popularity: movie.popularity,
+        tagline: movie.tagline,
+      })
+      return res.status(201).json({ message: 'Movie successfully added' })
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
 
-        return res.status(201).json({ "message": "Removed from faves" })
-      } catch (error) {
-        console.error(error)
-        return res.status(500).json({ message: 'Server Error' }); 
+  getFaves: async (req, res) => {
+    try {
+      const favedMovies = await Fave.find({ userId: req.user.id })
+
+      if (favedMovies.length === 0) {
+        return res.json({ faves: [] })
       }
-    },
-  
-    getReviews: async (req, res) => {
-      try {
-        const reviewedMovies = await Review.find({userId: req.user.id})
-        
-        if (reviewedMovies.length === 0) {
-            return res.json({reviews: []})
-        } 
 
-        const reviewsData = reviewedMovies.map(reviews => ({
-            mongoId: reviews._id,
-            title: reviews.title,
-            poster: reviews.poster,
-            text: reviews.text
-        }))
+      const favesData = favedMovies.map((movie) => ({
+        tmdbId: movie.tmdbId,
+        mediaType: movie.mediaType,
+        title: movie.title,
+        poster: movie.poster,
+      }))
 
-        return res.json({reviews: reviewsData})
-      } catch (error) {
-        console.log(error)
-        return res.status(500).json({ message: 'Server Error' });
+      return res.json({ faves: favesData })
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  faveMovie: async (req, res) => {
+    try {
+      const movieFromDB = await Movie.findOne({ tmdbId: req.params.id }).lean()
+
+      if (!movieFromDB) {
+        return res.status(404).json({ message: 'Movie not found' })
       }
-    },
-  
-   
-    postReview: async (req, res) => {
-      try {
-        const movieFromDB = await Movie.findOne({tmdbId: req.params.id}).lean()
-        
-        if (!movieFromDB) {
-          return res.status(404).json({ message: "Movie not found" });
-        }
 
-        const { _id, title, poster } = movieFromDB;
+      const { _id: mongoId, mediaType, title, poster, tmdbId } = movieFromDB
 
-        await Review.create({ userId: req.user.id, title: title, itemId: _id, poster: poster, text: req.body.text})
+      await Fave.create({
+        userId: req.user.id,
+        title: title,
+        itemId: mongoId,
+        mediaType: mediaType,
+        poster: poster,
+        tmdbId: tmdbId,
+      })
 
-        return res.status(201).json({ "message": "Added to faves" })
-      } catch (error) {
-        console.error(error)
-        return res.status(500).json({ message: 'Server Error' }); 
+      return res.status(201).json({ message: 'Added to faves' })
+    } catch (error) {
+      console.error(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  removeFave: async (req, res) => {
+    try {
+      const user = req.user.id
+      const mediaId = req.params.id
+      await Fave.findOneAndDelete({ userId: user, tmdbId: mediaId })
+
+      return res.status(201).json({ message: 'Removed from faves' })
+    } catch (error) {
+      console.error(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  getReviews: async (req, res) => {
+    try {
+      const reviewedMovies = await Review.find({ userId: req.user.id })
+
+      if (reviewedMovies.length === 0) {
+        return res.json({ reviews: [] })
       }
-    },
 
-    getRecommendations: async (req, res) => {
-      try {
-        const recommendations = await Recommendation.find({userId: req.user.id})
+      const reviewsData = reviewedMovies.map((reviews) => ({
+        mongoId: reviews._id,
+        title: reviews.title,
+        poster: reviews.poster,
+        text: reviews.text,
+      }))
 
-        
-      } catch (error) {
-        console.log(error)
-        return res.status(500).json({ message: 'Server Error' });
+      return res.json({ reviews: reviewsData })
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  postReview: async (req, res) => {
+    try {
+      const movieFromDB = await Movie.findOne({ tmdbId: req.params.id }).lean()
+
+      if (!movieFromDB) {
+        return res.status(404).json({ message: 'Movie not found' })
       }
-    },
 
-    deleteReview: async (req, res) => {
-      try {
-        const reviewToDelete = req.params.id
+      const { _id, title, poster } = movieFromDB
 
-        await Review.findOneAndDelete({ _id: reviewToDelete })
-        return res.status(204).json('deleted!')
-      } catch (error) {
-        return res.status(500).json({ message: 'Server Error' });
+      await Review.create({
+        userId: req.user.id,
+        title: title,
+        itemId: _id,
+        poster: poster,
+        text: req.body.text,
+      })
+
+      return res.status(201).json({ message: 'Added to faves' })
+    } catch (error) {
+      console.error(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  getRecommendations: async (req, res) => {
+    try {
+      const recommendations = await Recommendation.find({ userId: req.user.id })
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  deleteReview: async (req, res) => {
+    try {
+      const reviewToDelete = req.params.id
+
+      await Review.findOneAndDelete({ _id: reviewToDelete })
+      return res.status(204).json('deleted!')
+    } catch (error) {
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  editReview: async (req, res) => {
+    try {
+      const reviewToEdit = req.params.id
+      const newText = req.body.text
+
+      await Review.findOneAndUpdate({ _id: reviewToEdit }, { text: newText })
+      return res.status(204).json('review updated!')
+    } catch (error) {
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+
+  addToWatchlist: async (req, res) => {
+    try {
+      const movieFromDB = await Movie.findOne({ tmdbId: req.params.id }).lean()
+
+      if (!movieFromDB) {
+        return res.status(404).json({ message: 'Movie not found' })
       }
-    },
 
-    editReview: async (req, res) => {
-      try {
-        const reviewToEdit = req.params.id
-        const newText = req.body.text
+      const { _id: mongoId, mediaType, title, poster, tmdbId } = movieFromDB
 
-        await Review.findOneAndUpdate({ _id: reviewToEdit}, {text: newText })
-        return res.status(204).json('review updated!')
-      } catch (error) {
-        return res.status(500).json({ message: 'Server Error' });
-      }
-    },
+      await Watchlist.create({
+        userId: req.user.id,
+        title: title,
+        itemId: mongoId,
+        mediaType: mediaType,
+        poster: poster,
+        tmdbId: tmdbId,
+      })
 
-    addToWatchlist: async (req, res) => {
-      try {
-        const movieFromDB = await Movie.findOne({tmdbId: req.params.id}).lean()
-        
-        if (!movieFromDB) {
-          return res.status(404).json({ message: "Movie not found" });
-        }
-
-        const { _id: mongoId, mediaType, title, poster, tmdbId } = movieFromDB;
-
-        await Watchlist.create({ userId: req.user.id, title: title, itemId: mongoId, mediaType: mediaType, poster: poster, tmdbId: tmdbId})
-
-        return res.status(201).json({ "message": "Added to watchlist" })
-      } catch (error) {
-        console.error(error)
-        return res.status(500).json({ message: 'Server Error' }); 
-      }
+      return res.status(201).json({ message: 'Added to watchlist' })
+    } catch (error) {
+      console.error(error)
+      return res.status(500).json({ message: 'Server Error' })
+    }
   },
 
   getWatchlist: async (req, res) => {
     try {
-      const watchlist = await Watchlist.find({userId: req.user.id})
-      
-      if (watchlist.length === 0) {
-          return res.json({watchlist: []})
-      } 
+      const watchlist = await Watchlist.find({ userId: req.user.id })
 
-      const watchlistData = watchlist.map(movie => ({
-          tmdbId: movie.tmdbId,
-          title: movie.title,
-          poster: movie.poster,
-          mediaType: movie.mediaType
+      if (watchlist.length === 0) {
+        return res.json({ watchlist: [] })
+      }
+
+      const watchlistData = watchlist.map((movie) => ({
+        tmdbId: movie.tmdbId,
+        title: movie.title,
+        poster: movie.poster,
+        mediaType: movie.mediaType,
       }))
 
-      return res.json({watchlist: watchlistData})
+      return res.json({ watchlist: watchlistData })
     } catch (error) {
       console.log(error)
-      return res.status(500).json({ message: 'Server Error' });
+      return res.status(500).json({ message: 'Server Error' })
     }
-  }, 
+  },
   removeFromWatchlist: async (req, res) => {
     try {
       const user = req.user.id
       const mediaId = req.params.id
-      await Watchlist.findOneAndDelete({userId: user, tmdbId: mediaId })
+      await Watchlist.findOneAndDelete({ userId: user, tmdbId: mediaId })
 
-      return res.status(201).json({ "message": "Removed from watchlist" })
+      return res.status(201).json({ message: 'Removed from watchlist' })
     } catch (error) {
       console.error(error)
-      return res.status(500).json({ message: 'Server Error' }); 
+      return res.status(500).json({ message: 'Server Error' })
+    }
+  },
+  getOpenAIRecommendations: async (req, res) => {
+    const { mediaType, message } = req.body
+
+    console.log(message)
+
+    if (!message) {
+      return res.status(400).json({ error: 'Missing title' })
+    }
+
+    try {
+      const GROQ_API_KEY = process.env.GROQ_API_KEY
+
+      const response = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'llama3-70b-8192',
+            messages: [
+              {
+                role: 'user',
+                content:
+                  message +
+                  ' ' +
+                  'Return only a JSON object (inside a markdown codeblock) structure like this: {"intro": your_intro_message, "recommendations": nested object {"movie_title (release_year)": "your_recmmendation_message}, "end": your_end_message}',
+              },
+            ],
+          }),
+        }
+      )
+      const data = await response.json()
+
+      const messageFromGroq = data.choices[0].message.content
+
+      console.log(messageFromGroq)
+
+      res.json({ reply: messageFromGroq })
+
+      if (!response.ok) {
+        console.error('Groq API error:', data)
+        return res.status(500).json({ error: data })
+      }
+    } catch (error) {
+      console.log(error)
     }
   },
 }
